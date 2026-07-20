@@ -1,0 +1,41 @@
+{
+  "built_at": "2026-07-19T20:57:53.153960+00:00",
+  "contract_version": "1.0.0",
+  "tiles": {
+    "global_loss_annual": {
+      "path": "data/global-temporal/tiles/global_loss_annual.pmtiles",
+      "sha256": "d84d26d7b9c45adc2f8fdfcaf50f2e38d9895ab8515c5b4df8aedfefd12a02e5",
+      "size_bytes": 630361
+    },
+    "global_undernourishment_3yr": {
+      "path": "data/global-temporal/tiles/global_undernourishment_3yr.pmtiles",
+      "sha256": "9cd7ef0c0223744f9b7aff0ddd93af11183398b98dafcae97dd95bbbd660aab1",
+      "size_bytes": 577144
+    },
+    "us_retail_surplus": {
+      "path": "data/global-temporal/tiles/us_retail_surplus.pmtiles",
+      "sha256": "2feb41c2c020294016bccd178db1f016cf42a64aafdda8723e18e1f6f4bc0953",
+      "size_bytes": 3263386
+    }
+  },
+  "feature_reconciliation": {
+    "global_loss_annual": {
+      "source_rows": 5074,
+      "source_null_rows": 0,
+      "geometry_mapped_rows": 4049,
+      "geometry_mapped_null_rows": 0,
+      "emitted_features": 4049,
+      "emitted_missing_features": 0,
+      "emitted_o_flagged_missing_features": 0
+    },
+    "global_undernourishment_3yr": {
+      "source_rows": 5727,
+      "source_null_rows": 2191,
+      "geometry_mapped_rows": 3726,
+      "geometry_mapped_null_rows": 1357,
+      "emitted_features": 3726,
+      "emitted_missing_features": 1357,
+      "emitted_o_flagged_missing_features": 332
+    }
+  }
+}

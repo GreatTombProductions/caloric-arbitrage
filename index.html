@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caloric Arbitrage — Food Surplus &amp; Deficit</title>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; overflow: hidden; }
+
+    #map { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+
+    /* ── View Switcher (top bar) ── */
+    .view-switcher {
+      position: absolute;
+      top: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      display: flex;
+      gap: 0;
+      background: rgba(30, 30, 30, 0.92);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+    }
+    .view-btn {
+      padding: 8px 18px;
+      border: none;
+      background: transparent;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+    .view-btn:hover { color: #ddd; }
+    .view-btn.active { background: rgba(255,255,255,0.12); color: #fff; font-weight: 600; }
+    .view-btn + .view-btn { border-left: 1px solid rgba(255,255,255,0.1); }
+
+    /* ── Sidebar Panel ── */
+    .sidebar {
+      position: absolute;
+      top: 60px;
+      left: 12px;
+      z-index: 10;
+      background: rgba(20, 20, 20, 0.92);
+      border-radius: 10px;
+      padding: 14px;
+      box-shadow: 0 2px 16px rgba(0,0,0,0.3);
+      max-width: 300px;
+      color: #ddd;
+      font-size: 12px;
+    }
+    .sidebar h2 {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+      color: #fff;
+    }
+    .sidebar .subtitle {
+      font-size: 10px;
+      color: #999;
+      margin-bottom: 10px;
+      line-height: 1.4;
+    }
+
+    /* ── Portland Layer Buttons ── */
+    .layer-btn {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      margin-bottom: 4px;
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 5px;
+      background: rgba(255,255,255,0.05);
+      color: #ccc;
+      cursor: pointer;
+      font-size: 11px;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .layer-btn:hover { border-color: rgba(255,255,255,0.35); }
+    .layer-btn.active { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); color: #fff; font-weight: 600; }
+    .layer-btn .dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    /* ── Global Measure Selector ── */
+    .measure-btn {
+      display: block;
+      width: 100%;
+      padding: 7px 10px;
+      margin-bottom: 4px;
+      border: 1.5px solid rgba(255,255,255,0.15);
+      border-radius: 5px;
+      background: rgba(255,255,255,0.05);
+      color: #ccc;
+      cursor: pointer;
+      font-size: 11px;
+      text-align: left;
+      transition: all 0.15s;
+    }
+    .measure-btn:hover { border-color: rgba(255,255,255,0.35); }
+    .measure-btn.active { border-color: rgba(255,255,255,0.6); background: rgba(255,255,255,0.1); color: #fff; font-weight: 600; }
+
+    /* ── Time Controls ── */
+    .time-controls {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .period-display {
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      text-align: center;
+      margin-bottom: 6px;
+    }
+    .period-display .label {
+      font-size: 10px;
+      font-weight: 400;
+      color: #999;
+      display: block;
+    }
+    .slider-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .slider-row input[type=range] {
+      flex: 1;
+      -webkit-appearance: none;
+      height: 4px;
+      border-radius: 2px;
+      background: rgba(255,255,255,0.25);
+      outline: none;
+      cursor: pointer;
+    }
+    .slider-row input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+    }
+    .play-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .play-btn {
+      width: 32px; height: 28px;
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 5px;
+      background: rgba(255,255,255,0.08);
+      color: #ddd;
+      cursor: pointer;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s;
+    }
+    .play-btn:hover { background: rgba(255,255,255,0.18); }
+    .speed-select {
+      background: rgba(255,255,255,0.08);
+      color: #ddd;
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 5px;
+      padding: 3px 6px;
+      font-size: 11px;
+      cursor: pointer;
+    }
+    .speed-select option { background: #222; }
+
+    /* ── Legend ── */
+    .legend {
+      margin-top: 10px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.1);
+    }
+    .legend-title {
+      font-size: 10px;
+      font-weight: 600;
+      color: #aaa;
+      margin-bottom: 4px;
+    }
+    .legend-bar {
+      display: flex;
+      height: 10px;
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 3px;
+    }
+    .legend-labels {
+      display: flex;
+      justify-content: space-between;
+      font-size: 9px;
+      color: #888;
+    }
+
+    /* ── Info Panel (bottom) ── */
+    .info-panel {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      background: rgba(20, 20, 20, 0.88);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-size: 10px;
+      color: #aaa;
+      max-width: 600px;
+      max-height: calc(100vh - 32px);
+      overflow-y: auto;
+      line-height: 1.5;
+      text-align: center;
+    }
+    .info-panel .disclosure-toggle {
+      color: #7eb8da;
+      cursor: pointer;
+      text-decoration: underline;
+      font-weight: 500;
+    }
+    .info-panel .disclosure-body {
+      display: none;
+      margin-top: 6px;
+      padding-top: 6px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      text-align: left;
+      font-size: 10px;
+      line-height: 1.6;
+    }
+    .info-panel .disclosure-body.open { display: block; }
+    .info-panel .disclosure-body dl {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 1px 10px;
+    }
+    .info-panel .disclosure-body dt {
+      color: #ccc;
+      font-weight: 600;
+    }
+    .info-panel .disclosure-body dd {
+      color: #999;
+    }
+
+    /* ── Tooltip ── */
+    .tooltip {
+      position: absolute;
+      z-index: 25;
+      background: rgba(0, 0, 0, 0.85);
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      pointer-events: none;
+      line-height: 1.5;
+      max-width: 240px;
+      display: none;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      * { animation-duration: 0.01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+
+  <!-- View Switcher -->
+  <div class="view-switcher" id="viewSwitcher">
+    <button class="view-btn active" data-view="portland">Portland (Local Proxy)</button>
+    <button class="view-btn" data-view="global">Global Historical</button>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar" id="sidebar">
+    <h2>Caloric Arbitrage</h2>
+    <p class="subtitle" id="sidebarSubtitle">Food surplus and deficit mapped together. Portland, OR.</p>
+
+    <!-- Portland Controls -->
+    <div id="portlandControls">
+      <button class="layer-btn active" data-layer="arbitrage">
+        <span class="dot" style="background: #9B59B6;"></span>Combined View
+      </button>
+      <button class="layer-btn" data-layer="surplus">
+        <span class="dot" style="background: #E74C3C;"></span>Surplus (waste proxy)
+      </button>
+      <button class="layer-btn" data-layer="deficit">
+        <span class="dot" style="background: #3498DB;"></span>Deficit (food deserts)
+      </button>
+    </div>
+
+    <!-- Global Controls -->
+    <div id="globalControls" style="display:none;">
+      <button class="measure-btn active" data-measure="global_loss_annual">
+        Caloric Loss<br><small style="color:#999;">Annual, country-level, FAO</small>
+      </button>
+      <button class="measure-btn" data-measure="global_undernourishment_3yr">
+        Undernourishment<br><small style="color:#999;">3-year average, country-level, FAO</small>
+      </button>
+      <button class="measure-btn" data-measure="us_retail_surplus">
+        US Retail Surplus<br><small style="color:#999;">Annual national, ReFED</small>
+      </button>
+
+      <div class="time-controls" id="timeControls">
+        <div class="period-display">
+          <span class="label" id="measureLabel">Caloric Loss</span>
+          <span id="periodDisplay">2000</span>
+        </div>
+        <div class="slider-row">
+          <input type="range" id="periodSlider" min="0" max="0" value="0" step="1">
+        </div>
+        <div class="play-row">
+          <button class="play-btn" id="playBtn" title="Play/Pause">▶</button>
+          <button class="play-btn" id="prevBtn" title="Previous">◀</button>
+          <button class="play-btn" id="nextBtn" title="Next">▶</button>
+          <select class="speed-select" id="speedSelect">
+            <option value="3000">Slow</option>
+            <option value="1500" selected>Medium</option>
+            <option value="600">Fast</option>
+          </select>
+          <span style="font-size:10px;color:#888;" id="periodCount"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Legend -->
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <!-- Tooltip -->
+  <div class="tooltip" id="tooltip"></div>
+
+  <!-- Info Panel -->
+  <div class="info-panel" id="infoPanel">
+    <span id="infoText">Surplus estimated from food establishment density × sector waste rates (ReFED). Deficit from USDA Food Access Research Atlas. Spatial pattern is accurate; magnitude is indicative.</span>
+    <span id="globalInfo" style="display:none;">
+      <span class="disclosure-toggle" id="disclosureToggle">▶ Source &amp; Evidence</span>
+    </span>
+    <div class="disclosure-body" id="disclosureBody">
+      <dl>
+        <dt>Publisher</dt><dd id="discPublisher">—</dd>
+        <dt>Dataset</dt><dd id="discDataset">—</dd>
+        <dt>Indicator</dt><dd id="discIndicator">—</dd>
+        <dt>Period</dt><dd id="discPeriod">—</dd>
+        <dt>Unit</dt><dd id="discUnit">—</dd>
+        <dt>Native Resolution</dt><dd id="discResolution">—</dd>
+        <dt>Provenance</dt><dd id="discClass">—</dd>
+        <dt>Edition</dt><dd id="discEdition">—</dd>
+        <dt>Accessed</dt><dd id="discAccessed">—</dd>
+        <dt>License &amp; Terms</dt><dd id="discLicense">—</dd>
+        <dt>Methodology</dt><dd id="discMethodology">—</dd>
+        <dt>Notices</dt><dd id="discNotices">—</dd>
+        <dt>Limitations</dt><dd id="discLimits">—</dd>
+      </dl>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/pmtiles@3.0.7/dist/pmtiles.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

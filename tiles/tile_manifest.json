@@ -1,0 +1,13 @@
+{
+  "total_cells": 794,
+  "tile_path": "tiles/caloric_arbitrage.pmtiles",
+  "properties": [
+    "surplus_z",
+    "deficit_z",
+    "arbitrage_score",
+    "net_mismatch",
+    "regime",
+    "establishment_count"
+  ],
+  "layer_name": "hexagons"
+}
